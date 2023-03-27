@@ -12,6 +12,8 @@ from tokenizer import BertTokenizer
 from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
+import torch
+import torch.nn as nn
 
 
 TQDM_DISABLE=False
@@ -45,7 +47,11 @@ class BertSentimentClassifier(torch.nn.Module):
                 param.requires_grad = True
 
         ### TODO
-        raise NotImplementedError
+        # raise NotImplementedError
+
+        # Add a dropout layer and a fully connected layer after BERT to predict the sentiment class
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = nn.Linear(config.hidden_size, self.num_labels)
 
 
     def forward(self, input_ids, attention_mask):
@@ -54,7 +60,21 @@ class BertSentimentClassifier(torch.nn.Module):
         # HINT: you should consider what is the appropriate output to return given that
         # the training loop currently uses F.cross_entropy as the loss function.
         ### TODO
-        raise NotImplementedError
+        # raise NotImplementedError
+
+        # Pass input tokens and attention masks through BERT model
+        bert_outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+
+        # Get the [CLS] token hidden states
+        cls_output = bert_outputs['pooler_output']
+
+        # Pass the [CLS] token hidden states through the dropout layer
+        dropout_output = self.dropout(cls_output)
+
+        # Pass the dropout output through the fully connected layer to get logits for sentiment classes
+        logits = self.classifier(dropout_output)
+
+        return logits
 
 
 
