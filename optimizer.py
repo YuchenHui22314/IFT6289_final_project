@@ -74,12 +74,13 @@ class AdamW(Optimizer):
                     state["vt"] = torch.zeros_like(p.data)
 
                 mt, vt = state["mt"], state["vt"]
-                state["t"] += 1
+                # t=t+1
+                state["t"] += 1 
 
-                # Update biased first moment estimate
-                mt.mul_(beta1).add_(gt, alpha=(1 - beta1))
+                # Update biased first moment estimate #m_t
+                mt.mul_(beta1).add_(gt, alpha=(1 - beta1)) 
 
-                # Update biased second raw moment estimate
+                # Update biased second raw moment estimate, #v_t
                 vt.mul_(beta2).addcmul_(gt, gt, value=(1 - beta2))
 
                 if correct_bias:
