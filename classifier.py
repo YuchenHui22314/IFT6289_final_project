@@ -386,7 +386,7 @@ if __name__ == "__main__":
         test_out = '/content/assignment/predictions/'+args.option+'-sst-test-out.csv'
     )
 
-    train(config)
+    # train(config)
 
     print('Evaluating on SST...')
     test(config)

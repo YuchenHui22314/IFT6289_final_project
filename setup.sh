@@ -19,5 +19,5 @@ cd /content/IFT6289_final_project/ || exit
 # python3 classifier.py –option [pretrain/finetune] –epochs NUM_EPOCHS –lr LR –
 # batch_size=BATCH_SIZE hidden_dropout_prob=RATE
 
-python3 classifier.py –option pretrain  –lr 1e-3 --use_gpu | tee /content/assignment/pretrain.log  
-python3 classifier.py –option finetune  –lr 1e-3 --use_gpu | tee /content/assignment/finetune.log 
+python3 classifier.py --option pretrain  --lr 1e-3 --use_gpu | tee /content/assignment/pretrain.log  
+python3 classifier.py --option finetune  --lr 1e-3 --use_gpu | tee /content/assignment/finetune.log 
