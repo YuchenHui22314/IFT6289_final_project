@@ -372,7 +372,7 @@ if __name__ == "__main__":
 
     print('Training Sentiment Classifier on SST...')
     config = SimpleNamespace(
-        filepath='sst-classifier.pt',
+        filepath= f'sst-classifier-{args.option}-{args.epochs}-{args.lr}.pt',
         lr=args.lr,
         use_gpu=args.use_gpu,
         epochs=args.epochs,
@@ -382,8 +382,8 @@ if __name__ == "__main__":
         dev='data/ids-sst-dev.csv',
         test='data/ids-sst-test-student.csv',
         option=args.option,
-        dev_out = 'predictions/'+args.option+'-sst-dev-out.csv',
-        test_out = 'predictions/'+args.option+'-sst-test-out.csv'
+        dev_out = '/content/assignment/predictions/'+args.option+'-sst-dev-out.csv',
+        test_out = '/content/assignment/predictions/'+args.option+'-sst-test-out.csv'
     )
 
     train(config)
@@ -393,7 +393,7 @@ if __name__ == "__main__":
 
     print('Training Sentiment Classifier on cfimdb...')
     config = SimpleNamespace(
-        filepath='cfimdb-classifier.pt',
+        filepath = f'cfimdb-classifier-{args.option}-{args.epochs}-{args.lr}.pt',
         lr=args.lr,
         use_gpu=args.use_gpu,
         epochs=args.epochs,
@@ -403,8 +403,8 @@ if __name__ == "__main__":
         dev='data/ids-cfimdb-dev.csv',
         test='data/ids-cfimdb-test-student.csv',
         option=args.option,
-        dev_out = 'predictions/'+args.option+'-cfimdb-dev-out.csv',
-        test_out = 'predictions/'+args.option+'-cfimdb-test-out.csv'
+        dev_out = '/content/assignment/predictions/'+args.option+'-cfimdb-dev-out.csv',
+        test_out = '/content/assignment/predictions/'+args.option+'-cfimdb-test-out.csv'
     )
 
     train(config)
