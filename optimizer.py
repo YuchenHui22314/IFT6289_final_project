@@ -59,7 +59,50 @@ class AdamW(Optimizer):
                 #    (incorporating the learning rate again).
 
                 ### TODO
-                raise NotImplementedError
+                # Hyperparameters
+                gt = p.grad.data
+                alpha = group["lr"]
+                beta1, beta2 = group["betas"]
+                eps = group["eps"]
+                weight_decay = group["weight_decay"]
+                correct_bias = group["correct_bias"]
 
+                # Initialize state
+                if len(state) == 0:
+                    state["t"] = 0
+                    state["mt"] = torch.zeros_like(p.data)
+                    state["vt"] = torch.zeros_like(p.data)
+
+                mt, vt = state["mt"], state["vt"]
+                # t=t+1
+                state["t"] += 1 
+
+                # Update biased first moment estimate #m_t
+                mt.mul_(beta1).add_(gt, alpha=(1 - beta1)) 
+
+                # Update biased second raw moment estimate, #v_t
+                vt.mul_(beta2).addcmul_(gt, gt, value=(1 - beta2))
+
+                if correct_bias:
+                    # Compute bias-corrected first moment estimate
+                    mt_hat = mt.div(1 - beta1 ** state["t"])
+
+                    # Compute bias-corrected second raw moment estimate
+                    vt_hat = vt.div(1 - beta2 ** state["t"])
+                else:
+                    mt_hat = mt
+                    vt_hat = vt
+
+                # Update parameters
+                p.data.addcdiv_(mt_hat, vt_hat.sqrt().add(eps), value=-alpha)
+
+                # Apply weight decay after main gradient-based update
+                if weight_decay != 0:
+                    p.data.add_(p.data, alpha=-alpha * weight_decay)
 
         return loss
+
+                # raise NotImplementedError
+
+
+        # return loss
