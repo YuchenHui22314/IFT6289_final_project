@@ -372,11 +372,11 @@ if __name__ == "__main__":
 
     print('Training Sentiment Classifier on SST...')
     config = SimpleNamespace(
-        filepath= f'sst-classifier-{args.option}-{args.epochs}-{args.lr}.pt',
+        filepath= f'/content/assignment/sst-classifier-{args.option}-{args.epochs}-{args.lr}.pt',
         lr=args.lr,
         use_gpu=args.use_gpu,
         epochs=args.epochs,
-        batch_size = 64,
+        batch_size =128,
         hidden_dropout_prob=args.hidden_dropout_prob,
         train='data/ids-sst-train.csv',
         dev='data/ids-sst-dev.csv',
@@ -393,11 +393,11 @@ if __name__ == "__main__":
 
     print('Training Sentiment Classifier on cfimdb...')
     config = SimpleNamespace(
-        filepath = f'cfimdb-classifier-{args.option}-{args.epochs}-{args.lr}.pt',
+        filepath = f'/content/assignment/cfimdb-classifier-{args.option}-{args.epochs}-{args.lr}.pt',
         lr=args.lr,
         use_gpu=args.use_gpu,
         epochs=args.epochs,
-        batch_size= 8,
+        batch_size= 16,
         hidden_dropout_prob=args.hidden_dropout_prob,
         train='data/ids-cfimdb-train.csv',
         dev='data/ids-cfimdb-dev.csv',
