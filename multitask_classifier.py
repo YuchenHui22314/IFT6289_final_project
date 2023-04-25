@@ -13,7 +13,7 @@ from tqdm import tqdm
 from datasets import SentenceClassificationDataset, SentencePairDataset, \
     load_multitask_data, load_multitask_test_data
 
-from evaluation import model_eval_sst, test_model_multitask
+from evaluation import model_eval_sst, test_model_multitask,model_eval_multitask
 
 
 TQDM_DISABLE=True
@@ -227,12 +227,15 @@ def train_multitask(args):
             optimizer.step()
 
             total_loss += loss.item()
+            total_batches+=1
 
         # Print the average loss for this epoch
         print(f"Epoch {epoch+1}/{args.num_epochs}, Loss: {total_loss / total_batches}")
 
-            # Evaluate the model on the development set for each task
-        para_dev_acc, *_ , sst_dev_acc, *_ , sts_dev_corr, *_ = model_eval_test_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+        # Evaluate the model on the development set for each task
+        # para_dev_acc, *_ , sst_dev_acc, *_ , sts_dev_corr, *_ = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+        para_dev_acc, para_y_pred, para_sent_ids, sst_dev_acc, sst_y_pred, sst_sent_ids, sts_dev_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+
 
         # Save the model if the development scores are better than the best so far
         improved = False
