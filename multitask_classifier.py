@@ -53,7 +53,7 @@ class MultitaskBERT(nn.Module):
             elif config.option == 'finetune':
                 param.requires_grad = True
         ### TODO
-        self.dropout = nn.Dropout(config.dropout)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.sentiment_classifier = nn.Linear(config.hidden_size, 5)
 
         #这两行代码中，self.bert.config.hidden_size * 2是因为我们在处理两个句子对的嵌入时，需要将它们拼接在一起。
@@ -186,13 +186,13 @@ def train_multitask(args):
     criterion_sts = nn.MSELoss()
 
     # Define optimizer
-    optimizer = AdamW(model.parameters(), lr=args.learning_rate)
+    optimizer = AdamW(model.parameters(), lr=args.lr)
     # Initialize the best development scores for each task
     best_dev_score_sst = 0
     best_dev_score_para = 0
     best_dev_score_sts = 0
     # Training loop
-    for epoch in range(args.num_epochs):
+    for epoch in range(args.epochs):
         model.train()
         total_loss = 0
         total_batches = 0
@@ -201,9 +201,11 @@ def train_multitask(args):
         # for sst_batch, para_batch, sts_batch in zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader):
         for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):
             # Unpack the batches and move to device
-            sst_input_ids, sst_attention_mask, sst_labels = sst_batch
-            para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_batch
-            sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_batch
+            sst_input_ids, sst_attention_mask, sst_labels = (sst_batch['token_ids'], sst_batch['attention_mask'], sst_batch['labels'])
+            para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = (para_batch['token_ids_1'], 
+            para_batch['attention_mask_1'], para_batch['token_ids_2'], para_batch['attention_mask_2'], para_batch['labels'])
+            sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = (sts_batch['token_ids_1'], 
+            sts_batch['attention_mask_1'], sts_batch['token_ids_2'], sts_batch['attention_mask_2'], sts_batch['labels'])
 
             sst_input_ids, sst_attention_mask, sst_labels = sst_input_ids.to(device), sst_attention_mask.to(device), sst_labels.to(device)
             para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_input_ids_1.to(device), para_attention_mask_1.to(device), para_input_ids_2.to(device), para_attention_mask_2.to(device), para_labels.to(device)
@@ -240,7 +242,7 @@ def train_multitask(args):
             total_batches+=1
 
         # Print the average loss for this epoch
-        print(f"Epoch {epoch+1}/{args.num_epochs}, Loss: {total_loss / total_batches}")
+        print(f"Epoch {epoch+1}/{args.epochs}, Loss: {total_loss / total_batches}")
 
         # Evaluate the model on the development set for each task
         # para_dev_acc, *_ , sst_dev_acc, *_ , sts_dev_corr, *_ = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
