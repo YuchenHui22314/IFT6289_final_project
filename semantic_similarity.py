@@ -195,37 +195,18 @@ def train_multitask(args):
         model.train()
         total_loss = 0
         total_batches = 0
-        task_losses = {'sst': 0, 'para': 0, 'sts': 0}
+        task_losses = {'sts': 0}
 
-        # for sst_batch, para_batch, sts_batch in zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader):
-        for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):         
+        for sts_batch in sts_train_dataloader:
             # Zero the gradients
             optimizer.zero_grad()
 
             # Forward pass and loss computation
-            loss_sst, loss_para, loss_sts = 0, 0, 0
-            if sst_batch is not None:
-                # Unpack the batches and move to device
-                sst_input_ids, sst_attention_mask, sst_labels = (sst_batch['token_ids'], sst_batch['attention_mask'], sst_batch['labels'])
-                sst_input_ids, sst_attention_mask, sst_labels = sst_input_ids.to(device), sst_attention_mask.to(device), sst_labels.to(device)
-
-                sst_logits = model.predict_sentiment(sst_input_ids, sst_attention_mask)
-                loss_sst = criterion_sst(sst_logits, sst_labels)
-                task_losses['sst'] += loss_sst.item()
-
-            if para_batch is not None:
-                # Unpack the batches and move to device
-                para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = (para_batch['token_ids_1'], 
-                    para_batch['attention_mask_1'], para_batch['token_ids_2'], para_batch['attention_mask_2'], para_batch['labels'])
-                para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_input_ids_1.to(device), para_attention_mask_1.to(device), para_input_ids_2.to(device), para_attention_mask_2.to(device), para_labels.to(device)
-
-                para_logits = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
-                loss_para = criterion_para(para_logits, para_labels.float())
-                task_losses['para'] += loss_para.item()
+            loss_sts = 0
 
             if sts_batch is not None:
                 # Unpack the batches and move to device
-                sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = (sts_batch['token_ids_1'], 
+                sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = (sts_batch['token_ids_1'],
                     sts_batch['attention_mask_1'], sts_batch['token_ids_2'], sts_batch['attention_mask_2'], sts_batch['labels'])
                 sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_input_ids_1.to(device), sts_attention_mask_1.to(device), sts_input_ids_2.to(device), sts_attention_mask_2.to(device), sts_labels.to(device)
 
@@ -234,54 +215,57 @@ def train_multitask(args):
                 task_losses['sts'] += loss_sts.item()
 
             # Combine the losses
-            loss = loss_sst + loss_para + loss_sts
+            loss = loss_sts
 
             # Backward pass
             loss.backward()
             optimizer.step()
 
             total_loss += loss.item()
-            total_batches+=1
-
+            total_batches += 1
 
         # Evaluate the model on the development set for each task
-        # para_dev_acc, *_ , sst_dev_acc, *_ , sts_dev_corr, *_ = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
-        para_dev_acc, para_y_pred, para_sent_ids, sst_dev_acc, sst_y_pred, sst_sent_ids, sts_dev_corr, sts_y_pred, sts_sent_ids = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
+        sts_dev_corr, sts_y_pred, sts_sent_ids = model_eval_sts(sts_dev_dataloader, model, device)
 
         # Print the average loss for this epoch
-        print(f"Epoch {epoch+1}/{args.epochs}, Loss: {total_loss / total_batches}")
-
-        # Save the model if the development scores are better than the best so far
-        improved = False
-        if sst_dev_acc > best_dev_score_sst:
-            best_dev_score_sst = sst_dev_acc
-            improved = True
-        if para_dev_acc > best_dev_score_para:
-            best_dev_score_para = para_dev_acc
-            improved = True
-        if sts_dev_corr > best_dev_score_sts:
-            best_dev_score_sts = sts_dev_corr
-            improved = True
-
-        if improved:
-            save_model(model, optimizer, args, config, args.filepath)
-            print(f"New best development scores: Sentiment: {best_dev_score_sst:.3f}, Paraphrase: {best_dev_score_para:.3f}, Similarity: {best_dev_score_sts:.3f}. Model saved.")
+        print(f"Epoch {epoch + 1}/{args.epochs}, Loss: {total_loss / total_batches}, Similarity: {sts_dev_corr:.3f}.")
 
 
+def model_eval_sts(sts_dataloader, model, device):
+    model.eval()  # switch to eval model, will turn off randomness like dropout
 
-
-def test_model(args):
     with torch.no_grad():
-        device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
-        saved = torch.load(args.filepath)
-        config = saved['model_config']
+        sts_y_true = []
+        sts_y_pred = []
+        sts_sent_ids = []
 
-        model = MultitaskBERT(config)
-        model.load_state_dict(saved['model'])
-        model = model.to(device)
-        print(f"Loaded model to test from {args.filepath}")
+        # Evaluate semantic textual similarity.
+        for step, batch in enumerate(tqdm(sts_dataloader, desc=f'eval', disable=TQDM_DISABLE)):
+            (b_ids1, b_mask1,
+             b_ids2, b_mask2,
+             b_labels, b_sent_ids) = (batch['token_ids_1'], batch['attention_mask_1'],
+                                      batch['token_ids_2'], batch['attention_mask_2'],
+                                      batch['labels'], batch['sent_ids'])
 
-        test_model_multitask(args, model, device)
+            b_ids1 = b_ids1.to(device)
+            b_mask1 = b_mask1.to(device)
+            b_ids2 = b_ids2.to(device)
+            b_mask2 = b_mask2.to(device)
+
+            logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
+            y_hat = logits.flatten().cpu().numpy()
+            b_labels = b_labels.flatten().cpu().numpy()
+
+            sts_y_pred.extend(y_hat)
+            sts_y_true.extend(b_labels)
+            sts_sent_ids.extend(b_sent_ids)
+        
+        pearson_mat = np.corrcoef(sts_y_pred, sts_y_true)
+        sts_corr = pearson_mat[1][0]
+
+        print(f'Semantic Textual Similarity correlation: {sts_corr:.3f}')
+
+        return sts_corr, sts_y_pred, sts_sent_ids
 
 
 def get_args():
@@ -325,7 +309,7 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    args.filepath = f'{args.option}-{args.epochs}-{args.lr}-multitask.pt' # save path
+    args.filepath = f'{args.option}-{args.epochs}-{args.lr}-sts.pt'  # save path
     seed_everything(args.seed)  # fix the seed for reproducibility
-    train_multitask(args)
-    test_model(args)
+    train_multitask(args)  # Modify the training function to only train for STS
+    
