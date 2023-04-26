@@ -199,34 +199,37 @@ def train_multitask(args):
         task_losses = {'sst': 0, 'para': 0, 'sts': 0}
 
         # for sst_batch, para_batch, sts_batch in zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader):
-        for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):
-            # Unpack the batches and move to device
-            sst_input_ids, sst_attention_mask, sst_labels = (sst_batch['token_ids'], sst_batch['attention_mask'], sst_batch['labels'])
-            para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = (para_batch['token_ids_1'], 
-            para_batch['attention_mask_1'], para_batch['token_ids_2'], para_batch['attention_mask_2'], para_batch['labels'])
-            sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = (sts_batch['token_ids_1'], 
-            sts_batch['attention_mask_1'], sts_batch['token_ids_2'], sts_batch['attention_mask_2'], sts_batch['labels'])
-
-            sst_input_ids, sst_attention_mask, sst_labels = sst_input_ids.to(device), sst_attention_mask.to(device), sst_labels.to(device)
-            para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_input_ids_1.to(device), para_attention_mask_1.to(device), para_input_ids_2.to(device), para_attention_mask_2.to(device), para_labels.to(device)
-            sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_input_ids_1.to(device), sts_attention_mask_1.to(device), sts_input_ids_2.to(device), sts_attention_mask_2.to(device), sts_labels.to(device)
-
+        for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):         
             # Zero the gradients
             optimizer.zero_grad()
 
             # Forward pass and loss computation
             loss_sst, loss_para, loss_sts = 0, 0, 0
             if sst_batch is not None:
+                # Unpack the batches and move to device
+                sst_input_ids, sst_attention_mask, sst_labels = (sst_batch['token_ids'], sst_batch['attention_mask'], sst_batch['labels'])
+                sst_input_ids, sst_attention_mask, sst_labels = sst_input_ids.to(device), sst_attention_mask.to(device), sst_labels.to(device)
+
                 sst_logits = model.predict_sentiment(sst_input_ids, sst_attention_mask)
                 loss_sst = criterion_sst(sst_logits, sst_labels)
                 task_losses['sst'] += loss_sst.item()
 
             if para_batch is not None:
+                # Unpack the batches and move to device
+                para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = (para_batch['token_ids_1'], 
+                    para_batch['attention_mask_1'], para_batch['token_ids_2'], para_batch['attention_mask_2'], para_batch['labels'])
+                para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_input_ids_1.to(device), para_attention_mask_1.to(device), para_input_ids_2.to(device), para_attention_mask_2.to(device), para_labels.to(device)
+
                 para_logits = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
                 loss_para = criterion_para(para_logits, para_labels.float())
                 task_losses['para'] += loss_para.item()
 
             if sts_batch is not None:
+                # Unpack the batches and move to device
+                sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = (sts_batch['token_ids_1'], 
+                    sts_batch['attention_mask_1'], sts_batch['token_ids_2'], sts_batch['attention_mask_2'], sts_batch['labels'])
+                sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_input_ids_1.to(device), sts_attention_mask_1.to(device), sts_input_ids_2.to(device), sts_attention_mask_2.to(device), sts_labels.to(device)
+
                 sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
                 loss_sts = criterion_sts(sts_logits, sts_labels.float())
                 task_losses['sts'] += loss_sts.item()
