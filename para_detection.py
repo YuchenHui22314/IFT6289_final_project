@@ -225,7 +225,7 @@ def train_multitask(args):
             total_batches += 1
 
         # Evaluate the model on the development set for each task
-        para_dev_acc, para_y_pred, para_sent_ids = model_eval_multitask(None, para_dev_dataloader, None, model, device)
+        para_dev_acc, para_y_pred, para_sent_ids = model_eval_paraphrase(para_dev_dataloader,model, device)
 
 
         # Print the average loss for this epoch
