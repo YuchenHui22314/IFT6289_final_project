@@ -5,7 +5,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-
+from itertools import zip_longest
+from types import SimpleNamespace
 from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
@@ -195,8 +196,10 @@ def train_multitask(args):
         model.train()
         total_loss = 0
         total_batches = 0
+        task_losses = {'sst': 0, 'para': 0, 'sts': 0}
 
-        for sst_batch, para_batch, sts_batch in zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader):
+        # for sst_batch, para_batch, sts_batch in zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader):
+        for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):
             # Unpack the batches and move to device
             sst_input_ids, sst_attention_mask, sst_labels = sst_batch
             para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_batch
@@ -209,15 +212,22 @@ def train_multitask(args):
             # Zero the gradients
             optimizer.zero_grad()
 
-            # Forward pass
-            sst_logits = model.predict_sentiment(sst_input_ids, sst_attention_mask)
-            para_logits = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
-            sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
+            # Forward pass and loss computation
+            loss_sst, loss_para, loss_sts = 0, 0, 0
+            if sst_batch is not None:
+                sst_logits = model.predict_sentiment(sst_input_ids, sst_attention_mask)
+                loss_sst = criterion_sst(sst_logits, sst_labels)
+                task_losses['sst'] += loss_sst.item()
 
-            # Compute loss
-            loss_sst = criterion_sst(sst_logits, sst_labels)
-            loss_para = criterion_para(para_logits, para_labels.float())
-            loss_sts = criterion_sts(sts_logits, sts_labels.float())
+            if para_batch is not None:
+                para_logits = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
+                loss_para = criterion_para(para_logits, para_labels.float())
+                task_losses['para'] += loss_para.item()
+
+            if sts_batch is not None:
+                sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
+                loss_sts = criterion_sts(sts_logits, sts_labels.float())
+                task_losses['sts'] += loss_sts.item()
 
             # Combine the losses
             loss = loss_sst + loss_para + loss_sts
