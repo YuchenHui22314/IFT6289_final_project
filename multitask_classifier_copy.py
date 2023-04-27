@@ -263,14 +263,18 @@ def train_multitask(args):
             # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
             # Modify the following code to match the number of tasks you have and the desired projection order
             for i, (g_sst, g_para, g_sts) in enumerate(zip_longest(grad_sst, grad_para, grad_sts, fillvalue=torch.zeros_like(grad_sst[0]))):
-                g_sst_projected = g_sst - g_para * (g_sst.dot(g_para)) / g_para.norm() ** 2
-                g_sst_projected = g_sst_projected - g_sts * (g_sst_projected.dot(g_sts)) / g_sts.norm() ** 2
+                g_sst_flat = g_sst.view(-1)
+                g_para_flat = g_para.view(-1)
+                g_sts_flat = g_sts.view(-1)
 
-                g_para_projected = g_para - g_sst * (g_para.dot(g_sst)) / g_sst.norm() ** 2
-                g_para_projected = g_para_projected - g_sts * (g_para_projected.dot(g_sts)) / g_sts.norm() ** 2
+                g_sst_projected = g_sst - g_para * (g_sst_flat.dot(g_para_flat)) / g_para_flat.norm() ** 2
+                g_sst_projected = g_sst_projected - g_sts * (g_sst_projected.view(-1).dot(g_sts_flat)) / g_sts_flat.norm() ** 2
 
-                g_sts_projected = g_sts - g_sst * (g_sts.dot(g_sst)) / g_sst.norm() ** 2
-                g_sts_projected = g_sts_projected - g_para * (g_sts_projected.dot(g_para)) / g_para.norm() ** 2
+                g_para_projected = g_para - g_sst * (g_para_flat.dot(g_sst_flat)) / g_sst_flat.norm() ** 2
+                g_para_projected = g_para_projected - g_sts * (g_para_projected.view(-1).dot(g_sts_flat)) / g_sts_flat.norm() ** 2
+
+                g_sts_projected = g_sts - g_sst * (g_sts_flat.dot(g_sst_flat)) / g_sst_flat.norm() ** 2
+                g_sts_projected = g_sts_projected - g_para * (g_sts_projected.view(-1).dot(g_para_flat)) / g_para_flat.norm() ** 2
 
                 g_combined = g_sst_projected + g_para_projected + g_sts_projected
                 model.parameters()[i].grad = g_combined
