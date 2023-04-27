@@ -267,14 +267,14 @@ def train_multitask(args):
                 g_para_flat = g_para.view(-1)
                 g_sts_flat = g_sts.view(-1)
 
-                g_sst_projected = g_sst - g_para * (g_sst_flat.dot(g_para_flat)) / g_para_flat.norm() ** 2
-                g_sst_projected = g_sst_projected - g_sts * (g_sst_projected.view(-1).dot(g_sts_flat)) / g_sts_flat.norm() ** 2
+                g_sst_projected = g_sst_flat - g_para_flat * (g_sst_flat.dot(g_para_flat)) / g_para_flat.norm() ** 2
+                g_sst_projected = g_sst_projected - g_sts_flat * (g_sst_projected.dot(g_sts_flat)) / g_sts_flat.norm() ** 2
 
-                g_para_projected = g_para - g_sst * (g_para_flat.dot(g_sst_flat)) / g_sst_flat.norm() ** 2
-                g_para_projected = g_para_projected - g_sts * (g_para_projected.view(-1).dot(g_sts_flat)) / g_sts_flat.norm() ** 2
+                g_para_projected = g_para_flat - g_sst_flat * (g_para_flat.dot(g_sst_flat)) / g_sst_flat.norm() ** 2
+                g_para_projected = g_para_projected - g_sts_flat * (g_para_projected.dot(g_sts_flat)) / g_sts_flat.norm() ** 2
 
-                g_sts_projected = g_sts - g_sst * (g_sts_flat.dot(g_sst_flat)) / g_sst_flat.norm() ** 2
-                g_sts_projected = g_sts_projected - g_para * (g_sts_projected.view(-1).dot(g_para_flat)) / g_para_flat.norm() ** 2
+                g_sts_projected = g_sts_flat - g_sst_flat * (g_sts_flat.dot(g_sst_flat)) / g_sst_flat.norm() ** 2
+                g_sts_projected = g_sts_projected - g_para_flat * (g_sts_projected.dot(g_para_flat)) / g_para_flat.norm() ** 2
 
                 g_combined = g_sst_projected + g_para_projected + g_sts_projected
                 param.grad = g_combined.view_as(param)
