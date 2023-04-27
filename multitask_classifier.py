@@ -238,7 +238,7 @@ def train_multitask(args):
             loss = loss_sst + loss_para + loss_sts
 
             # Backward pass
-            loss.backward()
+            # loss.backward()
 
             # Backward pass
             loss_sst.backward(retain_graph=True)
