@@ -240,8 +240,44 @@ def train_multitask(args):
             # Backward pass
             loss.backward()
 
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_value)
+            # Backward pass
+            loss_sst.backward(retain_graph=True)
+            grad_sst = []
+            for param in model.parameters():
+                if param.grad is not None:
+                    grad_sst.append(param.grad.clone().detach())
+
+            loss_para.backward(retain_graph=True)
+            grad_para = []
+            for param in model.parameters():
+                if param.grad is not None:
+                    grad_para.append(param.grad.clone().detach())
+
+            loss_sts.backward()
+            grad_sts = []
+            for param in model.parameters():
+                if param.grad is not None:
+                    grad_sts.append(param.grad.clone().detach())
+
+            # Gradient surgery
+            # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
+            # Modify the following code to match the number of tasks you have and the desired projection order
+            for i, (g_sst, g_para, g_sts) in enumerate(zip_longest(grad_sst, grad_para, grad_sts, fillvalue=torch.zeros_like(grad_sst[0]))):
+                g_sst_projected = g_sst - g_para * (g_sst.dot(g_para)) / g_para.norm() ** 2
+                g_sst_projected = g_sst_projected - g_sts * (g_sst_projected.dot(g_sts)) / g_sts.norm() ** 2
+
+                g_para_projected = g_para - g_sst * (g_para.dot(g_sst)) / g_sst.norm() ** 2
+                g_para_projected = g_para_projected - g_sts * (g_para_projected.dot(g_sts)) / g_sts.norm() ** 2
+
+                g_sts_projected = g_sts - g_sst * (g_sts.dot(g_sst)) / g_sst.norm() ** 2
+                g_sts_projected = g_sts_projected - g_para * (g_sts_projected.dot(g_para)) / g_para.norm() ** 2
+
+                g_combined = g_sst_projected + g_para_projected + g_sts_projected
+                model.parameters()[i].grad = g_combined
+
+
+            # # Gradient clipping   optional
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_value)
 
             # Gradient accumulation
             gradient_accumulation_counter += 1
