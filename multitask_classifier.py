@@ -196,6 +196,7 @@ def train_multitask(args):
         total_loss = 0
         total_batches = 0
         task_losses = {'sst': 0, 'para': 0, 'sts': 0}
+        gradient_accumulation_counter = 0
 
         # for sst_batch, para_batch, sts_batch in zip(sst_train_dataloader, para_train_dataloader, sts_train_dataloader):
         for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):         
@@ -238,11 +239,26 @@ def train_multitask(args):
 
             # Backward pass
             loss.backward()
-            optimizer.step()
+
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_value)
+
+            # Gradient accumulation
+            gradient_accumulation_counter += 1
+            if gradient_accumulation_counter % args.gradient_accumulation_steps == 0:
+                # Perform optimization step
+                optimizer.step()
+                # Zero the gradients
+                optimizer.zero_grad()
+                gradient_accumulation_counter = 0
 
             total_loss += loss.item()
             total_batches+=1
-
+         # Print the average loss for the current epoch
+        print(f'Epoch {epoch + 1} Loss: {total_loss / total_batches:.4f}')
+        print(f'SST Loss: {task_losses["sst"] / total_batches:.4f}')
+        print(f'Para Loss: {task_losses["para"] / total_batches:.4f}')
+        print(f'STS Loss: {task_losses["sts"] / total_batches:.4f}')
 
         # Evaluate the model on the development set for each task
         # para_dev_acc, *_ , sst_dev_acc, *_ , sts_dev_corr, *_ = model_eval_multitask(sst_dev_dataloader, para_dev_dataloader, sts_dev_dataloader, model, device)
@@ -319,6 +335,13 @@ def get_args():
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3)
     parser.add_argument("--lr", type=float, help="learning rate, default lr for 'pretrain': 1e-3, 'finetune': 1e-5",
                         default=1e-5)
+    
+    #  Add the new argument for gradient clipping
+    parser.add_argument("--clip_value", type=float, default=1.0,
+                        help="Gradient clipping threshold value")
+    # for gradient acc.
+    parser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='Number of steps to accumulate gradients before updating weights')
+    #python train.py --gradient_accumulation_steps 4 
 
     args = parser.parse_args()
     return args
