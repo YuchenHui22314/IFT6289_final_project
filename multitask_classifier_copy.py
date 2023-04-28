@@ -223,6 +223,7 @@ def train_multitask(args):
                 para_logits = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
                 loss_para = criterion_para(para_logits, para_labels.float())
                 task_losses['para'] += loss_para.item()
+            
 
             if sts_batch is not None:
                 # Unpack the batches and move to device
@@ -233,6 +234,8 @@ def train_multitask(args):
                 sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
                 loss_sts = criterion_sts(sts_logits, sts_labels.float())
                 task_losses['sts'] += loss_sts.item()
+            else:
+                loss_sts = 0
 
             # Combine the losses
             loss = loss_sst + loss_para + loss_sts
