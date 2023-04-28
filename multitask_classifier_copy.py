@@ -235,7 +235,7 @@ def train_multitask(args):
                 loss_sts = criterion_sts(sts_logits, sts_labels.float())
                 task_losses['sts'] += loss_sts.item()
             else:
-                loss_sts = 0
+                loss_sts = torch.tensor(0.0, requires_grad=True).to(device)
 
             # Combine the losses
             loss = loss_sst + loss_para + loss_sts
