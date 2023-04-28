@@ -266,10 +266,12 @@ def train_multitask(args):
                 if g_sst is None:
                     g_sst = torch.zeros_like(g_para)
                 if g_para is None:
-                    g_para = torch.zeros_like(g_sst)
+                    g_para = torch.zeros_like(g_para)
                 if g_sts is None:
-                    g_sts = torch.zeros_like(g_sst)
+                    g_sts = torch.zeros_like(g_para)
                 
+                param.grad = torch.zeros_like(g_para)
+
                 g_sst_flat = g_sst.view(-1)
                 g_para_flat = g_para.view(-1)
                 g_sts_flat = g_sts.view(-1)
