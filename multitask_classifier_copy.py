@@ -253,7 +253,7 @@ def train_multitask(args):
                 if param.grad is not None:
                     grad_para.append(param.grad.clone().detach())
 
-            loss_sts.backward()
+            loss_sts.backward(retain_graph=True)
             grad_sts = []
             for param in model.parameters():
                 if param.grad is not None:
