@@ -249,13 +249,17 @@ def train_multitask(args):
             assert args.option == "finetune", "Gradient surgery only works for finetuning."
 
             model_parameters = model.parameters()
+            for param in model_parameters:
+                param.grad = torch.zeros_like(param, dtype=torch.float32)
 
             if sst_batch is not None:
                 loss_sst.backward(retain_graph=True)
                 grad_sst = []
                 for param in model_parameters:
-                    grad = param.grad.clone().detach()
+                    grad = param.grad
                     print(" the grad is", grad)
+                    grad_detached = grad.clone().detach()
+                    print(" the detached grad is", grad)
                     grad_sst.append(grad)
                 optimizer.zero_grad()
             else:
