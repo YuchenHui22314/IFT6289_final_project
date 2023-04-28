@@ -264,13 +264,15 @@ def train_multitask(args):
             # Modify the following code to match the number of tasks you have and the desired projection order
             for i, (g_sst, g_para, g_sts) in enumerate(zip_longest(grad_sst, grad_para, grad_sts, fillvalue=None)):
                 if g_sst is None:
-                    g_sst = torch.zeros_like(g_para)
+                    g_sst = torch.zeros_like(param)
                 if g_para is None:
-                    g_para = torch.zeros_like(g_para)
+                    g_para = torch.zeros_like(param)
                 if g_sts is None:
-                    g_sts = torch.zeros_like(g_para)
+                    g_sts = torch.zeros_like(param)
                 
-                param.grad = torch.zeros_like(param.grad)
+                # Check if the shapes are consistent
+                if g_sst.shape != param.shape or g_para.shape != param.shape or g_sts.shape != param.shape:
+                    continue
 
                 g_sst_flat = g_sst.view(-1)
                 g_para_flat = g_para.view(-1)
