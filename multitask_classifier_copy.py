@@ -262,7 +262,14 @@ def train_multitask(args):
             # Gradient surgery
             # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
             # Modify the following code to match the number of tasks you have and the desired projection order
-            for i, (g_sst, g_para, g_sts) in enumerate(zip_longest(grad_sst, grad_para, grad_sts, fillvalue=torch.zeros_like(grad_sst[0]))):
+            for i, (g_sst, g_para, g_sts) in enumerate(zip_longest(grad_sst, grad_para, grad_sts, fillvalue=None)):
+                if g_sst is None:
+                    g_sst = torch.zeros_like(g_para)
+                if g_para is None:
+                    g_para = torch.zeros_like(g_sst)
+                if g_sts is None:
+                    g_sts = torch.zeros_like(g_sst)
+                
                 g_sst_flat = g_sst.view(-1)
                 g_para_flat = g_para.view(-1)
                 g_sts_flat = g_sts.view(-1)
