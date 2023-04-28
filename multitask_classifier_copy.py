@@ -277,7 +277,7 @@ def train_multitask(args):
                 g_sts_projected = g_sts_projected - g_para_flat * (g_sts_projected.dot(g_para_flat)) / g_para_flat.norm() ** 2
 
                 g_combined = g_sst_projected + g_para_projected + g_sts_projected
-                param.grad = g_combined.view_as(param)
+                param.grad = g_combined.view(param.grad.shape)
 
 
             # # Gradient clipping   optional
