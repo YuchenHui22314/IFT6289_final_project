@@ -204,8 +204,8 @@ def train_multitask(args):
             optimizer.zero_grad()
 
             # Forward pass and loss computation
-            loss_sst = torch.tensor(0.0, requires_grad=True).to(device),
-            loss_sts = torch.tensor(0.0, requires_grad=True).to(device),
+            loss_sst = torch.tensor(0.0, requires_grad=True).to(device)
+            loss_sts = torch.tensor(0.0, requires_grad=True).to(device)
             loss_para = torch.tensor(0.0, requires_grad=True).to(device)
             ## TODO: add to task_losses
 
