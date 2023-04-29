@@ -259,8 +259,8 @@ def train_multitask(args):
             assert args.option == "finetune", "Gradient surgery only works for finetuning."
 
             model_parameters = model.parameters()
-            print("the length of model parameters is ", len(model_parameters))
             for param in model_parameters:
+                print("yst")
                 param.grad = torch.zeros_like(param, dtype=torch.float32)
 
             if sst_batch is not None:
