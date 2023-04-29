@@ -210,7 +210,7 @@ def train_multitask(args):
             if sts_batch is not None:
                 print("the sts batch is not none( uppper)")
 
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=False)
 
             # Forward pass and loss computation
             loss_sst = torch.tensor(0.0, requires_grad=True).to(device)
@@ -259,18 +259,16 @@ def train_multitask(args):
             assert args.option == "finetune", "Gradient surgery only works for finetuning."
 
             model_parameters = [ param for param in model.parameters()]
-            for param in model_parameters:
-                param.grad = torch.zeros_like(param, dtype=torch.float32)
+            optimizer.zero_grad(set_to_none = False)
 
             if sst_batch is not None:
                 print("the sst_batch is not none (lower)")
                 loss_sst.backward(retain_graph=True)
                 grad_sst = []
                 for param in model_parameters:
-                    grad = param.grad
-                    grad_detached = grad.clone().detach()
+                    grad = param.grad.clone().detach()
                     grad_sst.append(grad)
-                optimizer.zero_grad()
+                optimizer.zero_grad(set_to_none = False)
             else:
                 ## set the grad to zero
                 print("sst batch is none")
@@ -285,7 +283,7 @@ def train_multitask(args):
                 grad_para = []
                 for param in model_parameters:
                     grad_para.append(param.grad.clone().detach())
-                optimizer.zero_grad()
+                optimizer.zero_grad( set_to_none = False)
             else:
                 ## set the grad to zero
                 grad_para = []
@@ -299,7 +297,7 @@ def train_multitask(args):
                 grad_sts = []
                 for param in model_parameters:
                     grad_sts.append(param.grad.clone().detach())
-                optimizer.zero_grad()
+                optimizer.zero_grad(set_to_none = False)
             else:
                 ## set the grad to zero
                 grad_sts = []
@@ -310,6 +308,10 @@ def train_multitask(args):
             # Gradient surgery
             # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
             # Modify the following code to match the number of tasks you have and the desired projection order
+            print("the grad_sst is", grad_sst)
+            print("the grad_para is", grad_para)
+            print("the grad_sts is", grad_sts)
+
             for i, (g_sst, g_para, g_sts) in enumerate(zip(grad_sst, grad_para, grad_sts)):
 
                 print("the g_sst shape is", g_sst.shape)
@@ -330,6 +332,11 @@ def train_multitask(args):
                 g_sst_projected = g_sst_flat
                 g_para_projected = g_para_flat
                 
+                print("before")
+                print("the g_sts_projected is", g_sts_projected)
+                print("the g_sst_projected is", g_sst_projected)
+                print("the g_para_projected is", g_para_projected)
+
                 if dot_product_sst_para < 0:
                     g_sst_projected = g_sst_flat - g_para_flat * dot_product_sst_para/ g_para_flat.norm() ** 2
                 if dot_product_sst_sts < 0:
@@ -344,12 +351,20 @@ def train_multitask(args):
                     g_sts_projected = g_sts_flat - g_sst_flat * dot_product_sst_sts / g_sst_flat.norm() ** 2
                 if dot_product_para_sts < 0:
                     g_sts_projected = g_sts_projected - g_para_flat * dot_product_para_sts / g_para_flat.norm() ** 2
+                
+                print("after")
+                print("the g_sts_projected is", g_sts_projected)
+                print("the g_sst_projected is", g_sst_projected)
+                print("the g_para_projected is", g_para_projected)
 
 
 
                 g_combined = g_sst_projected + g_para_projected + g_sts_projected
-                print("the g_combined shape is", g_combined.shape)
+                print("the g_combined is ", g_combined)
+                
                 model_parameters[i].grad = g_combined.view(model_parameters[i].shape)
+                print("the model_parameters[i].grad is ", model_parameters[i].grad)
+                exit(0)
 
             optimizer.step()
             total_loss += loss.item()
