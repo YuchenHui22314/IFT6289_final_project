@@ -270,7 +270,6 @@ def train_multitask(args):
                     grad = param.grad
                     grad_detached = grad.clone().detach()
                     grad_sst.append(grad)
-                print("the grad_sst is", grad_sst)
                 optimizer.zero_grad()
             else:
                 ## set the grad to zero
