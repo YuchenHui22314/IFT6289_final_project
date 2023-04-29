@@ -10,6 +10,8 @@ from types import SimpleNamespace
 from bert import BertModel
 from optimizer import AdamW
 from tqdm import tqdm
+import torch_xla
+import torch_xla.core.xla_model as xm
 
 from datasets import SentenceClassificationDataset, SentencePairDataset, \
     load_multitask_data, load_multitask_test_data
@@ -139,6 +141,8 @@ def save_model(model, optimizer, args, config, filepath):
 ## Currently only trains on sst dataset
 def train_multitask(args):
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
+    if args.tpu:
+        device =  xm.xla_device() 
     # Load data
     sst_train_data, num_labels, para_train_data, sts_train_data = load_multitask_data(args.sst_train, args.para_train, args.sts_train, split='train')
     sst_dev_data, num_labels, para_dev_data, sts_dev_data = load_multitask_data(args.sst_dev, args.para_dev, args.sts_dev, split='train')
@@ -382,6 +386,8 @@ def train_multitask(args):
 def test_model(args):
     with torch.no_grad():
         device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
+        if args.tpu:
+            device =  xm.xla_device() 
         saved = torch.load(args.filepath)
         config = saved['model_config']
 
@@ -433,6 +439,10 @@ def get_args():
     # Gradient surgery
     parser.add_argument("--grad_surgery", action='store_true', help = 'Use gradient surgery')
     args = parser.parse_args()
+
+    # TPU
+    parser.add_argument("--tpu", action='store_true')
+
     return args
 
 if __name__ == "__main__":
