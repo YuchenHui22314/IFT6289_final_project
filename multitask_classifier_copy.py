@@ -333,10 +333,10 @@ def train_multitask(args):
                 g_sst_projected = g_sst_flat
                 g_para_projected = g_para_flat
                 
-                print("before")
-                print("the g_sts_projected is", g_sts_projected)
-                print("the g_sst_projected is", g_sst_projected)
-                print("the g_para_projected is", g_para_projected)
+                # print("before")
+                # print("the g_sts_projected is", g_sts_projected)
+                # print("the g_sst_projected is", g_sst_projected)
+                # print("the g_para_projected is", g_para_projected)
 
                 if dot_product_sst_para < 0:
                     g_sst_projected = g_sst_flat - g_para_flat * dot_product_sst_para/ g_para_flat.norm() ** 2
@@ -353,18 +353,18 @@ def train_multitask(args):
                 if dot_product_para_sts < 0:
                     g_sts_projected = g_sts_projected - g_para_flat * dot_product_para_sts / g_para_flat.norm() ** 2
                 
-                print("after")
-                print("the g_sts_projected is", g_sts_projected)
-                print("the g_sst_projected is", g_sst_projected)
-                print("the g_para_projected is", g_para_projected)
+                # print("after")
+                # print("the g_sts_projected is", g_sts_projected)
+                # print("the g_sst_projected is", g_sst_projected)
+                # print("the g_para_projected is", g_para_projected)
 
 
 
                 g_combined = g_sst_projected + g_para_projected + g_sts_projected
-                print("the g_combined is ", g_combined)
+                # print("the g_combined is ", g_combined)
                 
                 model_parameters[i].grad = g_combined.view(model_parameters[i].shape)
-                print("the model_parameters[i].grad is ", model_parameters[i].grad)
+                # print("the model_parameters[i].grad is ", model_parameters[i].grad)
 
             optimizer.step()
             total_loss += loss.item()
