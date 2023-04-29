@@ -243,7 +243,7 @@ def load_multitask_test_data():
 
 
 
-def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filename,split='train'):
+def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filename, args , split='train'):
     sentiment_data = []
     num_labels = {}
     if split == 'test':
@@ -261,7 +261,8 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
                 if label not in num_labels:
                     num_labels[label] = len(num_labels)
                 sentiment_data.append((sent, label,sent_id))
-    sentiment_data = sentiment_data[:1000]
+    if args.debug:
+        sentiment_data = sentiment_data[:1000]
     print(f"Loaded {len(sentiment_data)} {split} examples from {sentiment_filename}")
 
     paraphrase_data = []
@@ -283,7 +284,8 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
                                             int(float(record['is_duplicate'])),sent_id))
                 except:
                     pass
-    paraphrase_data = paraphrase_data[:2000]
+    if args.debug:
+        paraphrase_data = paraphrase_data[:2000]
     print(f"Loaded {len(paraphrase_data)} {split} examples from {paraphrase_filename}")
 
     similarity_data = []
@@ -301,7 +303,8 @@ def load_multitask_data(sentiment_filename,paraphrase_filename,similarity_filena
                 similarity_data.append((preprocess_string(record['sentence1']),
                                         preprocess_string(record['sentence2']),
                                         float(record['similarity']),sent_id))
-    similarity_data = similarity_data[:800]
+    if args.debug:
+        similarity_data = similarity_data[:800]
     print(f"Loaded {len(similarity_data)} {split} examples from {similarity_filename}")
 
     return sentiment_data, num_labels, paraphrase_data, similarity_data

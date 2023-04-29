@@ -140,8 +140,8 @@ def save_model(model, optimizer, args, config, filepath):
 def train_multitask(args):
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     # Load data
-    sst_train_data, num_labels, para_train_data, sts_train_data = load_multitask_data(args.sst_train, args.para_train, args.sts_train, split='train')
-    sst_dev_data, num_labels, para_dev_data, sts_dev_data = load_multitask_data(args.sst_dev, args.para_dev, args.sts_dev, split='train')
+    sst_train_data, num_labels, para_train_data, sts_train_data = load_multitask_data(args.sst_train, args.para_train, args.sts_train, args, split='train')
+    sst_dev_data, num_labels, para_dev_data, sts_dev_data = load_multitask_data(args.sst_dev, args.para_dev, args.sts_dev,args, split='train')
 
     sst_train_data = SentenceClassificationDataset(sst_train_data, args)
     sst_dev_data = SentenceClassificationDataset(sst_dev_data, args)
@@ -432,6 +432,8 @@ def get_args():
 
     # Gradient surgery
     parser.add_argument("--grad_surgery", action='store_true', help = 'Use gradient surgery')
+    # debug
+    parser.add_argument("--debug", action='store_true', help = 'Debug mode')
     args = parser.parse_args()
 
     return args
