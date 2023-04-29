@@ -215,9 +215,7 @@ def train_multitask(args):
                 sst_input_ids, sst_attention_mask, sst_labels = sst_input_ids.to(device), sst_attention_mask.to(device), sst_labels.to(device)
 
                 sst_logits = model.predict_sentiment(sst_input_ids, sst_attention_mask)
-                print("the loss_sst is:", loss_sst)
                 loss_sst = criterion_sst(sst_logits, sst_labels)
-                print("the loss_sst is:", loss_sst)
                 loss_sst = criterion_sst(sst_logits, sst_labels)
                 task_losses['sst'] += loss_sst.item()
 
@@ -228,9 +226,7 @@ def train_multitask(args):
                 para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_input_ids_1.to(device), para_attention_mask_1.to(device), para_input_ids_2.to(device), para_attention_mask_2.to(device), para_labels.to(device)
 
                 para_logits = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
-                print( "the loss_para is:", loss_para)
                 loss_para = criterion_para(para_logits, para_labels.float())
-                print( "the loss_para is:", loss_para)
                 task_losses['para'] += loss_para.item()
             
 
@@ -241,13 +237,10 @@ def train_multitask(args):
                 sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_input_ids_1.to(device), sts_attention_mask_1.to(device), sts_input_ids_2.to(device), sts_attention_mask_2.to(device), sts_labels.to(device)
 
                 sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
-                print("the sts loss is:", loss_sts)
                 loss_sts = criterion_sts(sts_logits, sts_labels.float())
-                print("the sts loss is:", loss_sts)
                 task_losses['sts'] += loss_sts.item()
 
             # Combine the losses
-            print(" the loss is", loss_sst, loss_para, loss_sts)
             loss = loss_sst + loss_para + loss_sts
 
             # Backward pass
