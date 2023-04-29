@@ -203,9 +203,12 @@ def train_multitask(args):
         for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):         
             # Zero the gradients
             print(counter)
-            print("sst_batch is ", sst_batch)
-            print("para_batch is ", para_batch)
-            print("sts_batch is ", sts_batch)
+            if sst_batch is not None:
+                print("the stt batch is not none( uppper)")
+            if para_batch is not None:
+                print("the para batch is not none( uppper)")
+            if sts_batch is not None:
+                print("the sts batch is not none( uppper)")
 
             optimizer.zero_grad()
 
@@ -217,7 +220,6 @@ def train_multitask(args):
 
             if sst_batch is not None:
                 # Unpack the batches and move to device
-                print("the batch is not none( upper)")
                 sst_input_ids, sst_attention_mask, sst_labels = (sst_batch['token_ids'], sst_batch['attention_mask'], sst_batch['labels'])
                 sst_input_ids, sst_attention_mask, sst_labels = sst_input_ids.to(device), sst_attention_mask.to(device), sst_labels.to(device)
 
@@ -228,7 +230,6 @@ def train_multitask(args):
 
             if para_batch is not None:
                 # Unpack the batches and move to device
-                print("the batch is not none (upeer)")
                 para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = (para_batch['token_ids_1'], 
                     para_batch['attention_mask_1'], para_batch['token_ids_2'], para_batch['attention_mask_2'], para_batch['labels'])
                 para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_input_ids_1.to(device), para_attention_mask_1.to(device), para_input_ids_2.to(device), para_attention_mask_2.to(device), para_labels.to(device)
@@ -240,7 +241,6 @@ def train_multitask(args):
 
             if sts_batch is not None:
                 # Unpack the batches and move to device
-                print("the Upper batch is not none")
                 sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = (sts_batch['token_ids_1'], 
                     sts_batch['attention_mask_1'], sts_batch['token_ids_2'], sts_batch['attention_mask_2'], sts_batch['labels'])
                 sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_input_ids_1.to(device), sts_attention_mask_1.to(device), sts_input_ids_2.to(device), sts_attention_mask_2.to(device), sts_labels.to(device)
@@ -260,11 +260,10 @@ def train_multitask(args):
 
             model_parameters = model.parameters()
             for param in model_parameters:
-                print("yst")
                 param.grad = torch.zeros_like(param, dtype=torch.float32)
 
             if sst_batch is not None:
-                print("the batch is not none")
+                print("the sst_batch is not none (lower)")
                 loss_sst.backward(retain_graph=True)
                 grad_sst = []
                 for param in model_parameters:
@@ -283,7 +282,7 @@ def train_multitask(args):
                     grad_sst.append(grad)
 
             if para_batch is not None:
-                print("the batch is not none")
+                print("the para batch is not none (lowe)")
                 loss_para.backward(retain_graph=True)
                 grad_para = []
                 for param in model_parameters:
@@ -297,7 +296,7 @@ def train_multitask(args):
                     grad_para.append(grad)
 
             if sts_batch is not None:
-                print("the batch is not none")
+                print("the sts batch is not none (lower)")
                 loss_sts.backward()
                 grad_sts = []
                 for param in model_parameters:
