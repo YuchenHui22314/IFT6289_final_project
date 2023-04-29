@@ -114,9 +114,8 @@ class MultitaskBERT(nn.Module):
         '''
         embeddings_1 = self.forward(input_ids_1, attention_mask_1)
         embeddings_2 = self.forward(input_ids_2, attention_mask_2)
-        combined_embeddings = torch.cat((embeddings_1, embeddings_2), dim=-1)
-        logit = self.similarity_classifier(self.dropout(combined_embeddings))       
-        return logit.squeeze(-1)
+        cos_sim = F.cosine_similarity(self.dropout(embeddings_1), self.dropout(embeddings_2), dim = 1)
+        return cos_sim, embeddings_1,embeddings_2
         
 
 
@@ -238,8 +237,10 @@ def train_multitask(args):
                     sts_batch['attention_mask_1'], sts_batch['token_ids_2'], sts_batch['attention_mask_2'], sts_batch['labels'])
                 sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_input_ids_1.to(device), sts_attention_mask_1.to(device), sts_input_ids_2.to(device), sts_attention_mask_2.to(device), sts_labels.to(device)
 
-                sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
-                loss_sts = criterion_sts(sts_logits, sts_labels.float())
+                cosSim,e1,e2 = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
+                sts_labels_normalized = (sts_labels - 2.5) / 2.5
+                loss_sts = criterion_sts(cosSim, sts_labels_normalized.float())
+
                 task_losses['sts'] += loss_sts.item()
 
             # Combine the losses
