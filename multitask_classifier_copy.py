@@ -253,7 +253,6 @@ def train_multitask(args):
             else:
                 ## 
             ################## Gradient Surery  ##################
-                print("Gradient Surgery")
                 assert args.option == "finetune", "Gradient surgery only works for finetuning."
 
                 model_parameters = [ param for param in model.parameters()]
