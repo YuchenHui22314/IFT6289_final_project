@@ -365,7 +365,6 @@ def train_multitask(args):
                 
                 model_parameters[i].grad = g_combined.view(model_parameters[i].shape)
                 print("the model_parameters[i].grad is ", model_parameters[i].grad)
-                exit(0)
 
             optimizer.step()
             total_loss += loss.item()
