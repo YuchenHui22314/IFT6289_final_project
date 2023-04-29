@@ -202,13 +202,6 @@ def train_multitask(args):
         counter = 0
         for sst_batch, para_batch, sts_batch in zip_longest(sst_train_dataloader, para_train_dataloader, sts_train_dataloader, fillvalue=None):         
             # Zero the gradients
-            print(counter)
-            if sst_batch is not None:
-                print("the stt batch is not none( uppper)")
-            if para_batch is not None:
-                print("the para batch is not none( uppper)")
-            if sts_batch is not None:
-                print("the sts batch is not none( uppper)")
 
             optimizer.zero_grad(set_to_none=False)
 
@@ -263,7 +256,6 @@ def train_multitask(args):
                 param.grad = torch.zeros_like(param, dtype=torch.float32)
 
             if sst_batch is not None:
-                print("the sst_batch is not none (lower)")
                 loss_sst.backward(retain_graph=True)
                 grad_sst = []
                 for param in model_parameters:
@@ -272,14 +264,12 @@ def train_multitask(args):
                 optimizer.zero_grad(set_to_none = False)
             else:
                 ## set the grad to zero
-                print("sst batch is none")
                 grad_sst = []
                 for param in model_parameters:
                     grad = torch.zeros_like(param, dtype=torch.float32)
                     grad_sst.append(grad)
 
             if para_batch is not None:
-                print("the para batch is not none (lowe)")
                 loss_para.backward(retain_graph=True)
                 grad_para = []
                 for param in model_parameters:
@@ -293,7 +283,6 @@ def train_multitask(args):
                     grad_para.append(grad)
 
             if sts_batch is not None:
-                print("the sts batch is not none (lower)")
                 loss_sts.backward()
                 grad_sts = []
                 for param in model_parameters:
