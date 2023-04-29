@@ -283,7 +283,7 @@ def train_multitask(args):
                     grad_para.append(grad)
 
             if sts_batch is not None:
-                loss_sts.backward(retain_graph=True)
+                loss_sts.backward()
                 grad_sts = []
                 for param in model_parameters:
                     grad_sts.append(param.grad.clone().detach())
