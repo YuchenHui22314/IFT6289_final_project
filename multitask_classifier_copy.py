@@ -247,98 +247,101 @@ def train_multitask(args):
 
             # Backward pass
             # loss.backward()
-            # if args.gradient_surgery:
-            #     ## 
+            if not args.gradient_surgery:
+                loss = loss_sst + loss_para + loss_sts
+                loss.backwards()
+            else:
+                ## 
             ################## Gradient Surery  ##################
-            assert args.option == "finetune", "Gradient surgery only works for finetuning."
+                assert args.option == "finetune", "Gradient surgery only works for finetuning."
 
-            model_parameters = [ param for param in model.parameters()]
-            for param in model_parameters:
-                param.grad = torch.zeros_like(param, dtype=torch.float32)
-
-            if sst_batch is not None:
-                loss_sst.backward(retain_graph=True)
-                grad_sst = []
+                model_parameters = [ param for param in model.parameters()]
                 for param in model_parameters:
-                    grad = param.grad.clone().detach()
-                    grad_sst.append(grad)
-                optimizer.zero_grad(set_to_none = False)
-            else:
-                ## set the grad to zero
-                grad_sst = []
-                for param in model_parameters:
-                    grad = torch.zeros_like(param, dtype=torch.float32)
-                    grad_sst.append(grad)
+                    param.grad = torch.zeros_like(param, dtype=torch.float32)
 
-            if para_batch is not None:
-                loss_para.backward(retain_graph=True)
-                grad_para = []
-                for param in model_parameters:
-                    grad_para.append(param.grad.clone().detach())
-                optimizer.zero_grad( set_to_none = False)
-            else:
-                ## set the grad to zero
-                grad_para = []
-                for param in model_parameters:
-                    grad = torch.zeros_like(param, dtype=torch.float32)
-                    grad_para.append(grad)
+                if sst_batch is not None:
+                    loss_sst.backward(retain_graph=True)
+                    grad_sst = []
+                    for param in model_parameters:
+                        grad = param.grad.clone().detach()
+                        grad_sst.append(grad)
+                    optimizer.zero_grad(set_to_none = False)
+                else:
+                    ## set the grad to zero
+                    grad_sst = []
+                    for param in model_parameters:
+                        grad = torch.zeros_like(param, dtype=torch.float32)
+                        grad_sst.append(grad)
 
-            if sts_batch is not None:
-                loss_sts.backward()
-                grad_sts = []
-                for param in model_parameters:
-                    grad_sts.append(param.grad.clone().detach())
-                optimizer.zero_grad(set_to_none = False)
-            else:
-                ## set the grad to zero
-                grad_sts = []
-                for param in model_parameters:
-                    grad = torch.zeros_like(param, dtype=torch.float32)
-                    grad_sts.append(grad)
+                if para_batch is not None:
+                    loss_para.backward(retain_graph=True)
+                    grad_para = []
+                    for param in model_parameters:
+                        grad_para.append(param.grad.clone().detach())
+                    optimizer.zero_grad( set_to_none = False)
+                else:
+                    ## set the grad to zero
+                    grad_para = []
+                    for param in model_parameters:
+                        grad = torch.zeros_like(param, dtype=torch.float32)
+                        grad_para.append(grad)
 
-            # Gradient surgery
-            # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
-            # Modify the following code to match the number of tasks you have and the desired projection order
+                if sts_batch is not None:
+                    loss_sts.backward()
+                    grad_sts = []
+                    for param in model_parameters:
+                        grad_sts.append(param.grad.clone().detach())
+                    optimizer.zero_grad(set_to_none = False)
+                else:
+                    ## set the grad to zero
+                    grad_sts = []
+                    for param in model_parameters:
+                        grad = torch.zeros_like(param, dtype=torch.float32)
+                        grad_sts.append(grad)
 
-            for i, (g_sst, g_para, g_sts) in enumerate(zip(grad_sst, grad_para, grad_sts)):
+                # Gradient surgery
+                # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
+                # Modify the following code to match the number of tasks you have and the desired projection order
 
-
-                # Check if the shapes are consistent
-
-                g_sst_flat = g_sst.view(-1)
-                g_para_flat = g_para.view(-1)
-                g_sts_flat = g_sts.view(-1)
-
-                dot_product_sst_para = g_sst_flat.dot(g_para_flat)
-                dot_product_sst_sts = g_sst_flat.dot(g_sts_flat)
-                dot_product_para_sts = g_para_flat.dot(g_sts_flat)
-
-                g_sts_projected = g_sts_flat
-                g_sst_projected = g_sst_flat
-                g_para_projected = g_para_flat
-                
-
-                if dot_product_sst_para < 0:
-                    g_sst_projected = g_sst_flat - g_para_flat * dot_product_sst_para/ g_para_flat.norm() ** 2
-                if dot_product_sst_sts < 0:
-                    g_sst_projected = g_sst_projected - g_sts_flat * dot_product_sst_sts / g_sts_flat.norm() ** 2
-
-                if dot_product_para_sts < 0:
-                    g_para_projected = g_para_flat - g_sts_flat * dot_product_para_sts / g_sts_flat.norm() ** 2
-                if dot_product_sst_para < 0:
-                    g_para_projected = g_para_projected - g_sst_flat * dot_product_sst_para / g_sst_flat.norm() ** 2
-
-                if dot_product_sst_sts < 0:
-                    g_sts_projected = g_sts_flat - g_sst_flat * dot_product_sst_sts / g_sst_flat.norm() ** 2
-                if dot_product_para_sts < 0:
-                    g_sts_projected = g_sts_projected - g_para_flat * dot_product_para_sts / g_para_flat.norm() ** 2
-                
+                for i, (g_sst, g_para, g_sts) in enumerate(zip(grad_sst, grad_para, grad_sts)):
 
 
+                    # Check if the shapes are consistent
 
-                g_combined = g_sst_projected + g_para_projected + g_sts_projected
-                
-                model_parameters[i].grad = g_combined.view(model_parameters[i].shape)
+                    g_sst_flat = g_sst.view(-1)
+                    g_para_flat = g_para.view(-1)
+                    g_sts_flat = g_sts.view(-1)
+
+                    dot_product_sst_para = g_sst_flat.dot(g_para_flat)
+                    dot_product_sst_sts = g_sst_flat.dot(g_sts_flat)
+                    dot_product_para_sts = g_para_flat.dot(g_sts_flat)
+
+                    g_sts_projected = g_sts_flat
+                    g_sst_projected = g_sst_flat
+                    g_para_projected = g_para_flat
+                    
+
+                    if dot_product_sst_para < 0:
+                        g_sst_projected = g_sst_flat - g_para_flat * dot_product_sst_para/ g_para_flat.norm() ** 2
+                    if dot_product_sst_sts < 0:
+                        g_sst_projected = g_sst_projected - g_sts_flat * dot_product_sst_sts / g_sts_flat.norm() ** 2
+
+                    if dot_product_para_sts < 0:
+                        g_para_projected = g_para_flat - g_sts_flat * dot_product_para_sts / g_sts_flat.norm() ** 2
+                    if dot_product_sst_para < 0:
+                        g_para_projected = g_para_projected - g_sst_flat * dot_product_sst_para / g_sst_flat.norm() ** 2
+
+                    if dot_product_sst_sts < 0:
+                        g_sts_projected = g_sts_flat - g_sst_flat * dot_product_sst_sts / g_sst_flat.norm() ** 2
+                    if dot_product_para_sts < 0:
+                        g_sts_projected = g_sts_projected - g_para_flat * dot_product_para_sts / g_para_flat.norm() ** 2
+                    
+
+
+
+                    g_combined = g_sst_projected + g_para_projected + g_sts_projected
+                    
+                    model_parameters[i].grad = g_combined.view(model_parameters[i].shape)
 
             optimizer.step()
             total_loss += loss.item()
