@@ -260,7 +260,7 @@ def train_multitask(args):
 
             model_parameters = [ param for param in model.parameters()]
             for param in model_parameters:
-                grad = torch.zeros_like(param, dtype=torch.float32)
+                param.grad = torch.zeros_like(param, dtype=torch.float32)
 
             if sst_batch is not None:
                 print("the sst_batch is not none (lower)")
