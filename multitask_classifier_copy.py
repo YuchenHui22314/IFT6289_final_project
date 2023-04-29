@@ -268,9 +268,7 @@ def train_multitask(args):
                 grad_sst = []
                 for param in model_parameters:
                     grad = param.grad
-                    print(" the grad is", grad)
                     grad_detached = grad.clone().detach()
-                    print(" the detached grad is", grad)
                     grad_sst.append(grad)
                 print("the grad_sst is", grad_sst)
                 optimizer.zero_grad()
