@@ -150,8 +150,8 @@ def train_multitask(args):
     para_train_data = SentencePairDataset(para_train_data, args)
     para_dev_data = SentencePairDataset(para_dev_data, args)
 
-    sts_train_data = SentencePairDataset(sts_train_data, args)
-    sts_dev_data = SentencePairDataset(sts_dev_data, args)
+    sts_train_data = SentencePairDataset(sts_train_data, args, isRegression = True)
+    sts_dev_data = SentencePairDataset(sts_dev_data, args, isRegression = True)
 
     sst_train_dataloader = DataLoader(sst_train_data, shuffle=True, batch_size=args.batch_size,
                                       collate_fn=sst_train_data.collate_fn)
@@ -247,7 +247,8 @@ def train_multitask(args):
 
             # Backward pass
             # loss.backward()
-
+            # if args.gradient_surgery:
+            #     ## 
             ################## Gradient Surery  ##################
             assert args.option == "finetune", "Gradient surgery only works for finetuning."
 
@@ -424,13 +425,9 @@ def get_args():
     parser.add_argument("--lr", type=float, help="learning rate, default lr for 'pretrain': 1e-3, 'finetune': 1e-5",
                         default=1e-5)
     
-    #  Add the new argument for gradient clipping
-    parser.add_argument("--clip_value", type=float, default=1.0,
-                        help="Gradient clipping threshold value")
-    # for gradient acc.
-    parser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='Number of steps to accumulate gradients before updating weights')
-    #python train.py --gradient_accumulation_steps 4 
 
+    # Gradient surgery
+    parser.add_argument("--grad_surgery", action='store_true', help = 'Use gradient surgery')
     args = parser.parse_args()
     return args
 

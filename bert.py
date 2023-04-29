@@ -230,7 +230,8 @@ class BertModel(BertPreTrainedModel):
 
     # get cls token hidden state
     first_tk = sequence_output[:, 0]
+    print(sequence_output.shape)
     first_tk = self.pooler_dense(first_tk)
     first_tk = self.pooler_af(first_tk)
-
+    print(sequence_output.shape, first_tk.shape)
     return {'last_hidden_state': sequence_output, 'pooler_output': first_tk}
