@@ -15,7 +15,7 @@ from datasets import SentenceClassificationDataset, SentencePairDataset, \
     load_multitask_data, load_multitask_test_data
 
 from evaluation import model_eval_sst, test_model_multitask,model_eval_multitask
-
+from sklearn.metrics.pairwise import cosine_similarity
 
 TQDM_DISABLE=True
 
@@ -60,6 +60,7 @@ class MultitaskBERT(nn.Module):
         self.paraphrase_classifier = nn.Linear(config.hidden_size * 2, 1)
         self.similarity_classifier = nn.Linear(config.hidden_size * 2, 1)
        
+       
 
     def forward(self, input_ids, attention_mask):
         'Takes a batch of sentences and produces embeddings for them.'
@@ -102,7 +103,7 @@ class MultitaskBERT(nn.Module):
         embeddings_1 = self.forward(input_ids_1, attention_mask_1)
         embeddings_2 = self.forward(input_ids_2, attention_mask_2)
         combined_embeddings = torch.cat((embeddings_1, embeddings_2), dim=-1)
-        logit = self.paraphrase_classifier(self.dropout(combined_embeddings))
+        logit = self.paraphrase_classifier(self.dropout(combined_embeddings))*5.0
         return logit.squeeze(-1)
 
 
@@ -112,11 +113,17 @@ class MultitaskBERT(nn.Module):
         '''Given a batch of pairs of sentences, outputs a single logit corresponding to how similar they are.
         Note that your output should be unnormalized (a logit).
         '''
+        
+
         embeddings_1 = self.forward(input_ids_1, attention_mask_1)
         embeddings_2 = self.forward(input_ids_2, attention_mask_2)
-        combined_embeddings = torch.cat((embeddings_1, embeddings_2), dim=-1)
-        logit = self.similarity_classifier(self.dropout(combined_embeddings))       
-        return logit.squeeze(-1)
+        # combined_embeddings = torch.cat((embeddings_1, embeddings_2), dim=-1)
+        # logit = self.similarity_classifier(self.dropout(combined_embeddings)) 
+        # return logit.squeeze(-1)
+        
+        cos_sim = F.cosine_similarity(self.dropout(embeddings_1), self.dropout(embeddings_2), dim = 1)
+        return cos_sim, embeddings_1,embeddings_2
+    
         
 
 
@@ -150,8 +157,8 @@ def train_multitask(args):
     para_train_data = SentencePairDataset(para_train_data, args)
     para_dev_data = SentencePairDataset(para_dev_data, args)
 
-    sts_train_data = SentencePairDataset(sts_train_data, args)
-    sts_dev_data = SentencePairDataset(sts_dev_data, args)
+    sts_train_data = SentencePairDataset(sts_train_data, args, isRegression=True)
+    sts_dev_data = SentencePairDataset(sts_dev_data, args, isRegression=True)
 
     sst_train_dataloader = DataLoader(sst_train_data, shuffle=True, batch_size=args.batch_size,
                                       collate_fn=sst_train_data.collate_fn)
@@ -183,6 +190,8 @@ def train_multitask(args):
     criterion_sst = nn.CrossEntropyLoss()
     criterion_para = nn.BCEWithLogitsLoss()
     criterion_sts = nn.MSELoss()
+    # criterion_sts = nn.CosineEmbeddingLoss()
+
 
     # Define optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
@@ -196,8 +205,8 @@ def train_multitask(args):
         total_loss = 0
         total_batches = 0
         task_losses = {'sts': 0}
-
-        for sts_batch in sts_train_dataloader:
+        # total_corr = 0
+        for sts_batch in tqdm(sts_train_dataloader):
             # Zero the gradients
             optimizer.zero_grad()
 
@@ -210,9 +219,24 @@ def train_multitask(args):
                     sts_batch['attention_mask_1'], sts_batch['token_ids_2'], sts_batch['attention_mask_2'], sts_batch['labels'])
                 sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2, sts_labels = sts_input_ids_1.to(device), sts_attention_mask_1.to(device), sts_input_ids_2.to(device), sts_attention_mask_2.to(device), sts_labels.to(device)
 
-                sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
-                loss_sts = criterion_sts(sts_logits, sts_labels.float())
+                # sts_logits = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
+                cosSim,e1,e2 = model.predict_similarity(sts_input_ids_1, sts_attention_mask_1, sts_input_ids_2, sts_attention_mask_2)
+                # loss_sts = criterion_sts(sts_logits, sts_labels.float())
+                sts_labels_normalized = (sts_labels - 2.5) / 2.5
+                loss_sts = criterion_sts(cosSim, sts_labels_normalized.float())
+                # loss_sts = criterion_sts(e1, e2, sts_labels_normalized.to(device))
+                # cos_norm = (cosSim*2.5)+2.5
+                # loss_sts = criterion_sts(cos_norm, sts_labels.float())
                 task_losses['sts'] += loss_sts.item()
+                # pearson_mat = np.corrcoef(cosSim.cpu().detach().numpy(), sts_labels_normalized.cpu().detach().numpy())
+                # sts_corr = pearson_mat[1][0]
+                # total_corr+=sts_corr
+                # print("1: ",(cosSim * 2.5) + 2.5)
+                # print("2: ",sts_labels)
+                # print("!!: ",loss_sts)
+                # print(torch.mean(torch.pow(cosSim - sts_labels_normalized, 2)))
+
+
 
             # Combine the losses
             loss = loss_sts
@@ -220,6 +244,7 @@ def train_multitask(args):
             # Backward pass
             loss.backward()
             optimizer.step()
+            optimizer.zero_grad()
 
             total_loss += loss.item()
             total_batches += 1
@@ -252,13 +277,49 @@ def model_eval_sts(sts_dataloader, model, device):
             b_ids2 = b_ids2.to(device)
             b_mask2 = b_mask2.to(device)
 
-            logits = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
-            y_hat = logits.flatten().cpu().numpy()
+            cos_sim,e1,e2 = model.predict_similarity(b_ids1, b_mask1, b_ids2, b_mask2)
+            cos_sim = cos_sim.cpu().numpy()
+            # y_hat = logits.flatten().cpu().numpy()
+            # b_labels = b_labels.flatten().cpu().numpy()
+            # cos_sim = F.cosine_similarity(e1, e2).cpu().numpy()
+
+            y_hat = (cos_sim * 2.5) + 2.5  # Convert cosine similarity values back to the original similarity range
             b_labels = b_labels.flatten().cpu().numpy()
+
+            # loss_sts = nn.MSELoss(torch.tensor(y_hat), torch.tensor(b_labels))
+            # print(np.mean(np.power(y_hat - b_labels, 2)))
+            # print("1 ", np.isnan(y_hat).any())
+            # print("2 ", np.isnan(b_labels).any())
+            # print("1:", e1.shape)
+            # print("2:", e2.shape)
+            # print("3:", e1.shape)
+            # print("4:", e2.shape)
+            # print("diff: ",e1-e2)
+            # print("nb: ",torch.eq(e1, e2).sum().item())
+            # print("5:", cosine_similarity(e1[0].cpu().numpy().reshape(-1, 1), e2[0].cpu().numpy().reshape(-1, 1)))
+            # print("6: ",cos_sim[0])
+            # print("1: ",y_hat)
+            # print("2: ",b_labels)
+            # pearson_mat = np.corrcoef(b_labels,b_labels)
+            # print("!: ", pearson_mat[1][0])
 
             sts_y_pred.extend(y_hat)
             sts_y_true.extend(b_labels)
             sts_sent_ids.extend(b_sent_ids)
+
+            # print("1: ",torch.eq(embed_1, embed_2).sum().item()) 
+            # print("2: ",torch.eq(embed_1, embed_1).sum().item()) 
+
+            # cos_sim2 = F.cosine_similarity(embed_1, embed_1).cpu().numpy()
+            # print("1: ",np.array_equal(cos_sim, cos_sim2))
+            # print("2: ",np.array_equal(cos_sim, cos_sim))
+
+            # print("1: ",cos_sim)
+            # print("2: ",cos_sim2)
+
+            # print("1: ",embed_1)
+            # print("2: ",embed_2)
+
         
         pearson_mat = np.corrcoef(sts_y_pred, sts_y_true)
         sts_corr = pearson_mat[1][0]
