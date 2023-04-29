@@ -247,12 +247,13 @@ def train_multitask(args):
 
             # Backward pass
             # loss.backward()
-            if not args.gradient_surgery:
+            if not args.grad_surgery:
                 loss = loss_sst + loss_para + loss_sts
                 loss.backwards()
             else:
                 ## 
             ################## Gradient Surery  ##################
+                print("Gradient Surgery")
                 assert args.option == "finetune", "Gradient surgery only works for finetuning."
 
                 model_parameters = [ param for param in model.parameters()]
