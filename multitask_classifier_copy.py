@@ -309,9 +309,9 @@ def train_multitask(args):
             # Gradient surgery
             # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
             # Modify the following code to match the number of tasks you have and the desired projection order
-            print("the grad_sst is", grad_sst)
-            print("the grad_para is", grad_para)
-            print("the grad_sts is", grad_sts)
+            # print("the grad_sst is", grad_sst)
+            # print("the grad_para is", grad_para)
+            # print("the grad_sts is", grad_sts)
 
             for i, (g_sst, g_para, g_sts) in enumerate(zip(grad_sst, grad_para, grad_sts)):
 
