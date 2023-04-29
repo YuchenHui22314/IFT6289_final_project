@@ -309,15 +309,9 @@ def train_multitask(args):
             # Gradient surgery
             # Perform gradient projection here, assuming grad_sst, grad_para, and grad_sts have the gradients for each task
             # Modify the following code to match the number of tasks you have and the desired projection order
-            # print("the grad_sst is", grad_sst)
-            # print("the grad_para is", grad_para)
-            # print("the grad_sts is", grad_sts)
 
             for i, (g_sst, g_para, g_sts) in enumerate(zip(grad_sst, grad_para, grad_sts)):
 
-                print("the g_sst shape is", g_sst.shape)
-                print("the g_para shape is", g_para.shape)
-                print("the g_sts shape is", g_sts.shape)
 
                 # Check if the shapes are consistent
 
@@ -333,10 +327,6 @@ def train_multitask(args):
                 g_sst_projected = g_sst_flat
                 g_para_projected = g_para_flat
                 
-                # print("before")
-                # print("the g_sts_projected is", g_sts_projected)
-                # print("the g_sst_projected is", g_sst_projected)
-                # print("the g_para_projected is", g_para_projected)
 
                 if dot_product_sst_para < 0:
                     g_sst_projected = g_sst_flat - g_para_flat * dot_product_sst_para/ g_para_flat.norm() ** 2
@@ -353,18 +343,12 @@ def train_multitask(args):
                 if dot_product_para_sts < 0:
                     g_sts_projected = g_sts_projected - g_para_flat * dot_product_para_sts / g_para_flat.norm() ** 2
                 
-                # print("after")
-                # print("the g_sts_projected is", g_sts_projected)
-                # print("the g_sst_projected is", g_sst_projected)
-                # print("the g_para_projected is", g_para_projected)
 
 
 
                 g_combined = g_sst_projected + g_para_projected + g_sts_projected
-                # print("the g_combined is ", g_combined)
                 
                 model_parameters[i].grad = g_combined.view(model_parameters[i].shape)
-                # print("the model_parameters[i].grad is ", model_parameters[i].grad)
 
             optimizer.step()
             total_loss += loss.item()
