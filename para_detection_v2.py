@@ -57,7 +57,7 @@ class MultitaskBERT(nn.Module):
         self.sentiment_classifier = nn.Linear(config.hidden_size, 5)
 
         #这两行代码中，self.bert.config.hidden_size * 2是因为我们在处理两个句子对的嵌入时，需要将它们拼接在一起。
-        self.paraphrase_classifier = nn.Linear(config.hidden_size * 2, 1)
+        self.paraphrase_classifier = nn.Linear(config.hidden_size * 3, 1)
         self.similarity_classifier = nn.Linear(config.hidden_size * 2, 1)
        
 
@@ -101,9 +101,18 @@ class MultitaskBERT(nn.Module):
         ### TODO
         embeddings_1 = self.forward(input_ids_1, attention_mask_1)
         embeddings_2 = self.forward(input_ids_2, attention_mask_2)
-        combined_embeddings = torch.cat((embeddings_1, embeddings_2), dim=-1)
-        logit = self.paraphrase_classifier(self.dropout(combined_embeddings))
-        return logit.squeeze(-1)
+        # combined_embeddings = torch.cat((embeddings_1, embeddings_2), dim=-1)
+        # logit = self.paraphrase_classifier(self.dropout(combined_embeddings))
+
+        # Compute element-wise absolute difference between the embeddings of the two sentences
+        abs_diff = torch.abs(embeddings_1 - embeddings_2)
+        
+        # Compute the weighted combination of the two sentence embeddings and the absolute difference
+        # You can use torch.cat to concatenate the embeddings and absolute difference along the last dimension
+        combined_embeddings = torch.cat((embeddings_1, embeddings_2, abs_diff), dim=1)
+        logits = self.paraphrase_classifier(self.dropout(combined_embeddings))
+
+        return logits.squeeze(-1), embeddings_1,embeddings_2
 
 
     def predict_similarity(self,
@@ -182,6 +191,7 @@ def train_multitask(args):
     # Define loss functions
     criterion_sst = nn.CrossEntropyLoss()
     criterion_para = nn.BCEWithLogitsLoss()
+    # criterion_para = nn.CosineEmbeddingLoss()
     criterion_sts = nn.MSELoss()
 
     # Define optimizer
@@ -197,7 +207,7 @@ def train_multitask(args):
         total_batches = 0
         task_losses = {'para': 0}
 
-        for para_batch in para_train_dataloader:
+        for para_batch in tqdm(para_train_dataloader):
             # Zero the gradients
             optimizer.zero_grad()
 
@@ -210,7 +220,8 @@ def train_multitask(args):
                     para_batch['attention_mask_1'], para_batch['token_ids_2'], para_batch['attention_mask_2'], para_batch['labels'])
                 para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2, para_labels = para_input_ids_1.to(device), para_attention_mask_1.to(device), para_input_ids_2.to(device), para_attention_mask_2.to(device), para_labels.to(device)
 
-                para_logits = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
+                para_logits,e1,e2 = model.predict_paraphrase(para_input_ids_1, para_attention_mask_1, para_input_ids_2, para_attention_mask_2)
+               
                 loss_para = criterion_para(para_logits, para_labels.float())
                 task_losses['para'] += loss_para.item()
 
@@ -253,7 +264,9 @@ def model_eval_paraphrase(paraphrase_dataloader, model, device):
             b_ids2 = b_ids2.to(device)
             b_mask2 = b_mask2.to(device)
 
-            logits = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
+            logits,e1,e2 = model.predict_paraphrase(b_ids1, b_mask1, b_ids2, b_mask2)
+            # cos_sim = F.cosine_similarity(e1, e2)
+            # cos_sim = (cos_sim + 1) / 2
             y_hat = logits.sigmoid().round().flatten().cpu().numpy()
             b_labels = b_labels.flatten().cpu().numpy()
 
@@ -271,17 +284,17 @@ def model_eval_paraphrase(paraphrase_dataloader, model, device):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sst_train", type=str, default="data/ids-sst-train.csv")
-    parser.add_argument("--sst_dev", type=str, default="data/ids-sst-dev.csv")
-    parser.add_argument("--sst_test", type=str, default="data/ids-sst-test-student.csv")
+    parser.add_argument("--sst_train", type=str, default="/content/project/data/ids-sst-train.csv")
+    parser.add_argument("--sst_dev", type=str, default="/content/project/data/ids-sst-dev.csv")
+    parser.add_argument("--sst_test", type=str, default="/content/project/data/ids-sst-test-student.csv")
 
-    parser.add_argument("--para_train", type=str, default="data/quora-train.csv")
-    parser.add_argument("--para_dev", type=str, default="data/quora-dev.csv")
-    parser.add_argument("--para_test", type=str, default="data/quora-test-student.csv")
+    parser.add_argument("--para_train", type=str, default="/content/project/data/quora-train.csv")
+    parser.add_argument("--para_dev", type=str, default="/content/project/data/quora-dev.csv")
+    parser.add_argument("--para_test", type=str, default="/content/project/data/quora-test-student.csv")
 
-    parser.add_argument("--sts_train", type=str, default="data/sts-train.csv")
-    parser.add_argument("--sts_dev", type=str, default="data/sts-dev.csv")
-    parser.add_argument("--sts_test", type=str, default="data/sts-test-student.csv")
+    parser.add_argument("--sts_train", type=str, default="/content/project/data/sts-train.csv")
+    parser.add_argument("--sts_dev", type=str, default="/content/project/data/sts-dev.csv")
+    parser.add_argument("--sts_test", type=str, default="/content/project/data/sts-test-student.csv")
 
     parser.add_argument("--seed", type=int, default=11711)
     parser.add_argument("--epochs", type=int, default=10)
@@ -290,14 +303,14 @@ def get_args():
                         choices=('pretrain', 'finetune'), default="pretrain")
     parser.add_argument("--use_gpu", action='store_true')
 
-    parser.add_argument("--sst_dev_out", type=str, default="predictions/sst-dev-output.csv")
-    parser.add_argument("--sst_test_out", type=str, default="predictions/sst-test-output.csv")
+    parser.add_argument("--sst_dev_out", type=str, default="/content/project/predictions/sst-dev-output.csv")
+    parser.add_argument("--sst_test_out", type=str, default="/content/project/predictions/sst-test-output.csv")
 
-    parser.add_argument("--para_dev_out", type=str, default="predictions/para-dev-output.csv")
-    parser.add_argument("--para_test_out", type=str, default="predictions/para-test-output.csv")
+    parser.add_argument("--para_dev_out", type=str, default="/content/project/predictions/para-dev-output.csv")
+    parser.add_argument("--para_test_out", type=str, default="/content/project/predictions/para-test-output.csv")
 
-    parser.add_argument("--sts_dev_out", type=str, default="predictions/sts-dev-output.csv")
-    parser.add_argument("--sts_test_out", type=str, default="predictions/sts-test-output.csv")
+    parser.add_argument("--sts_dev_out", type=str, default="/content/project/predictions/sts-dev-output.csv")
+    parser.add_argument("--sts_test_out", type=str, default="/content/project/predictions/sts-test-output.csv")
 
     # hyper parameters
     parser.add_argument("--batch_size", help='sst: 64, cfimdb: 8 can fit a 12GB GPU', type=int, default=8)
